@@ -1,0 +1,20 @@
+{
+  "name": "Agent Quest Badge #449",
+  "description": "A free quest badge for Agent ID holders, earned on AgentQuest \u2014 a quest board built for the Agent ID Hackathon. Claim 1 free badge, complete 1 free quest a day. No fees, no payments.",
+  "image": "https://sobarkemat.github.io/agentquest/assets/badge.png",
+  "external_url": "https://sobarkemat.github.io/agentquest/",
+  "attributes": [
+    {
+      "trait_type": "Project",
+      "value": "AgentQuest"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Badge"
+    },
+    {
+      "trait_type": "Badge Number",
+      "value": 449
+    }
+  ]
+}
