@@ -1,0 +1,10 @@
+{
+  "compiler": "0.8.24+commit.e11b9ed9",
+  "language": "Solidity",
+  "optimizer": {
+    "enabled": true,
+    "runs": 200
+  },
+  "evmVersion": "cancun",
+  "viaIR": false
+}
