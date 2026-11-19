@@ -1,0 +1,29 @@
+{
+  "factory": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
+  "factoryName": "Arachnid canonical deterministic deployment proxy (CREATE2)",
+  "saltLabel": "keccak256(\"agentquest-badge-v1\")",
+  "salt": "0x9a794cf8e75229665bf6b340ad95962bd8e3f6dc0eaedeba9d641a050ed72b64",
+  "initCodeHash": "0xc9bec122f3fd1157245147baeb7808dd37d7ec2846fd07d01cd3b5b8ee8d36dc",
+  "expectedAddress": "0x00c5579F105fE340eE197E9aF103E06b33fFEa3a",
+  "expectedAddressNote": "Deterministic CREATE2 address. Verified 3 ways (cast create2 x2 + manual keccak) and by eth_call simulation on BSC mainnet, which returned this exact address. Target address confirmed empty (no code) at simulation time.",
+  "constructorArgs": {
+    "registry": "0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F",
+    "baseURI": "",
+    "owner": "0xD7FCd6bD011253E32b8B96A0Dc815d30C6B930cB"
+  },
+  "initCodeBytes": 8515,
+  "factoryCalldataBytes": 8547,
+  "factoryCalldataFormat": "raw calldata = salt (32 bytes) ++ initCode; NO function selector (canonical deployer has no ABI)",
+  "gasEstimateMainnetRPC": 1779304,
+  "gasActualAnvilFork": 1749203,
+  "suggestedGasLimit": 2000000,
+  "gasPriceAtEstimate": "0.05 gwei (eth_gasPrice, BSC mainnet, 19 Nov 2026)",
+  "costBNB": {
+    "at_0.05_gwei": 8.8965e-05,
+    "at_1_gwei": 0.001779304,
+    "at_3_gwei": 0.005337912
+  },
+  "agentWalletBalanceBNB": 0.007028003659415444,
+  "balanceCoversEstimateAt1Gwei": "3.95x",
+  "bawPreviewCommand": "baw contract-call preview --binanceChainId 56 --from 0xD7FCd6bD011253E32b8B96A0Dc815d30C6B930cB --to 0x4e59b44847b379578588920cA78FbF26c0B4956C --value 0 --gasLimit 2000000 --inputData $(cat artifacts/factory-calldata.txt)"
+}

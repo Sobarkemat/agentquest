@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {AgentQuestBadge} from "../src/AgentQuestBadge.sol";
 import {MockAgentIdRegistry} from "../src/mocks/MockAgentIdRegistry.sol";
 
@@ -25,7 +26,7 @@ contract AgentQuestBadgeTest is Test {
         registry = new MockAgentIdRegistry();
         registry.mint(holder);
         registry.mint(holder2);
-        badge = new AgentQuestBadge(address(registry), "");
+        badge = new AgentQuestBadge(address(registry), "", address(this));
     }
 
     // -- gating views -------------------------------------------------------
@@ -167,5 +168,18 @@ contract AgentQuestBadgeTest is Test {
 
     function testOwnerIsDeployer() public view {
         assertEq(badge.owner(), address(this));
+    }
+
+    function testConstructorRevertsForZeroOwner() public {
+        // OZ Ownable's constructor reverts first (base constructors run
+        // before the derived constructor body), so the surfaced error is
+        // OwnableInvalidOwner — our own require is belt-and-braces.
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)));
+        new AgentQuestBadge(address(registry), "", address(0));
+    }
+
+    function testConstructorRevertsForZeroRegistry() public {
+        vm.expectRevert("registry is zero address");
+        new AgentQuestBadge(address(0), "", address(this));
     }
 }

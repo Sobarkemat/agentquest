@@ -23,7 +23,13 @@ contract AgentQuestBadgeForkTest is Test {
     AgentQuestBadge public badge;
 
     function setUp() public {
-        badge = new AgentQuestBadge(REGISTRY, "");
+        // Owner is Ahmad's agent wallet — the same owner the mainnet
+        // CREATE2-factory deployment will pass explicitly.
+        badge = new AgentQuestBadge(REGISTRY, "", AHMAD_AGENT);
+    }
+
+    function testOwnerIsAhmadAgentWallet() public view {
+        assertEq(badge.owner(), AHMAD_AGENT, "owner must be Ahmad's agent wallet");
     }
 
     function testRealRegistryRecognizesAhmad() public view {

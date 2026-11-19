@@ -34,6 +34,14 @@ import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 ///          private keys, API secrets, or pairing codes.
 ///      The ONLY owner function is `setBaseURI()`, which only changes where
 ///      token metadata is served from.
+///
+///      Deployment route: this contract is deployed via the canonical CREATE2
+///      factory (Arachnid deterministic deployment proxy,
+///      0x4e59b44847b379578588920cA78FbF26c0B4956C) with salt
+///      keccak256("agentquest-badge-v1"). During a factory deployment
+///      `msg.sender` in the constructor is the factory itself, so the owner
+///      is passed explicitly as a constructor argument instead of defaulting
+///      to `msg.sender` — otherwise the contract would end up ownerless.
 contract AgentQuestBadge is ERC721, Ownable, ReentrancyGuard {
     /// @notice The SPACE ID Agent ID registry (ERC-721, non-transferable).
     /// @dev Mainnet (BNB Chain): 0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F.
@@ -101,8 +109,18 @@ contract AgentQuestBadge is ERC721, Ownable, ReentrancyGuard {
 
     /// @param registry_ Address of the Agent ID registry contract.
     /// @param baseURI_ Initial metadata base URI (may be empty; owner can set later).
-    constructor(address registry_, string memory baseURI_) ERC721("Agent Quest Badge", "AQB") Ownable(msg.sender) {
+    /// @param owner_ Address that becomes the contract owner. Must be non-zero.
+    /// @dev The owner is an explicit parameter (not `msg.sender`) because the
+    ///      contract is deployed via the canonical CREATE2 factory: during a
+    ///      factory deployment `msg.sender` in the constructor is the factory
+    ///      itself, which would leave the contract ownerless. Passing the
+    ///      owner explicitly keeps ownership with the project wallet.
+    constructor(address registry_, string memory baseURI_, address owner_)
+        ERC721("Agent Quest Badge", "AQB")
+        Ownable(owner_)
+    {
         require(registry_ != address(0), "registry is zero address");
+        require(owner_ != address(0), "owner is zero address");
         agentIdRegistry = IERC721(registry_);
         _baseTokenURI = baseURI_;
     }

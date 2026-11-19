@@ -54,30 +54,68 @@ Requires [Foundry](https://getfoundry.sh) (forge 1.9.0 used).
 
 ```bash
 forge build
-forge test --match-contract AgentQuestBadgeTest          # 16 unit tests
+forge test --match-contract AgentQuestBadgeTest          # 18 unit tests
 forge test --fork-url https://bsc-dataseed.binance.org/ \
-  --match-contract AgentQuestBadgeForkTest               # 4 fork tests vs real registry
+  --match-contract AgentQuestBadgeForkTest               # 5 fork tests vs real registry
 ```
 
 See [TEST-REPORT.md](TEST-REPORT.md) for full results and gas numbers.
 
-## Deploy (mainnet)
+## Deploy (mainnet) — via the canonical CREATE2 factory
 
-Deployment goes through the Binance Agentic Wallet with a preview + user
-confirmation (see the deploy preview prepared for Ahmad). The raw deployment
-data is precomputed in `artifacts/`:
+The Binance Agentic Wallet (`baw`) cannot deploy a contract directly
+(`contract-call preview` requires `--to`; there is no deploy command), so
+mainnet deployment goes through the **canonical CREATE2 factory** (Arachnid
+deterministic deployment proxy), already present on BSC mainnet:
 
-- `artifacts/deployment-calldata.txt` — full creation code + encoded
-  constructor args, ready to paste as transaction data (value 0).
-- Constructor args: registry `0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F`,
-  baseURI `""` (set later via `setBaseURI` after metadata is hosted).
-- Deploy gas: 1,742,982 (measured from the exact deployment calldata).
-  Suggested gas limit 2,000,000, gas price ~1 gwei → ~0.00174 BNB.
+- Factory: `0x4e59b44847b379578588920cA78FbF26c0B4956C`
+  (bytecode verified on-chain: the canonical deployer proxy)
+- Salt: `keccak256("agentquest-badge-v1")` =
+  `0x9a794cf8e75229665bf6b340ad95962bd8e3f6dc0eaedeba9d641a050ed72b64`
+- Factory calldata (raw, NO function selector): salt (32 bytes) ++ initCode
+  — precomputed in `artifacts/factory-calldata.txt` (8,547 bytes).
+- **Expected contract address (deterministic CREATE2):**
+  `0x00c5579F105fE340eE197E9aF103E06b33fFEa3a`
+  — verified three ways (`cast create2` with init-code and with
+  init-code-hash, plus manual `keccak256(0xff ++ factory ++ salt ++
+  keccak256(initCode))`) AND by a read-only `eth_call` simulation against
+  BSC mainnet, which returned exactly this address. The target address was
+  confirmed empty (no code) at simulation time. Full proof in
+  [TEST-REPORT.md](TEST-REPORT.md) §7, details in
+  `artifacts/factory-deploy.json`.
 
-For testnet/local reproduction, `script/Deploy.s.sol` works with forge:
+Because the factory is `msg.sender` during construction, the owner is passed
+explicitly as a constructor argument (see `src/AgentQuestBadge.sol`):
+registry `0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F`, baseURI `""`
+(set later via `setBaseURI` after metadata is hosted), owner = Ahmad's agent
+wallet `0xD7FCd6bD011253E32b8B96A0Dc815d30C6B930cB`.
+
+- Deploy gas: **1,779,304** (eth_estimateGas, BSC mainnet RPC);
+  1,749,203 measured on a local anvil fork of mainnet. Suggested gas limit
+  **2,000,000**. Cost at 1 gwei ≈ **0.00178 BNB** (~Rp 19.200 at
+  BNB $590.37); at the current 0.05 gwei ≈ 0.000089 BNB (~Rp 960).
+  Agent wallet balance 0.007028 BNB covers the 1-gwei cost ~3.95x.
+
+### Preview command (run by the main agent AFTER Ahmad confirms)
+
+```bash
+baw contract-call preview --binanceChainId 56 \
+  --from 0xD7FCd6bD011253E32b8B96A0Dc815d30C6B930cB \
+  --to 0x4e59b44847b379578588920cA78FbF26c0B4956C \
+  --value 0 --gasLimit 2000000 \
+  --inputData $(cat artifacts/factory-calldata.txt)
+```
+
+After the preview is approved in the Binance app and the transaction is
+broadcast, verify the deployed contract on BscScan at the expected address
+above, then update the frontend note (deployment no longer pending).
+
+For testnet/local reproduction, `script/Deploy.s.sol` works with forge
+(direct deploy, not via the factory):
 
 ```bash
 REGISTRY=0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F BASE_URI="" \
+  OWNER=0xD7FCd6bD011253E32b8B96A0Dc815d30C6B930cB \
   forge script script/Deploy.s.sol --rpc-url bsc_testnet \
   --private-key $PRIVATE_KEY --broadcast
 ```
@@ -103,7 +141,10 @@ Verification options:
 
 `frontend/index.html` — static single-file app (ethers.js v6 via CDN).
 Connect wallet → check Agent ID → claim badge → post daily quest → board.
-Set `CONTRACT_ADDRESS` in the file after mainnet deployment.
+`CONTRACT_ADDRESS` is set to the expected CREATE2 address
+`0x00c5579F105fE340eE197E9aF103E06b33fFEa3a` with a "deployment pending"
+note — remove the note after the factory transaction is confirmed on
+BscScan.
 
 ## Decisions still needed from Ahmad
 

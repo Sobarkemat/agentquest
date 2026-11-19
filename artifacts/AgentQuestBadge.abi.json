@@ -11,6 +11,11 @@
         "name": "baseURI_",
         "type": "string",
         "internalType": "string"
+      },
+      {
+        "name": "owner_",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "nonpayable"

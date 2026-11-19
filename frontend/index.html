@@ -53,11 +53,17 @@ souvenir.</p>
 </div>
 
 <p class="muted">Contract: <span id="contractAddr"></span> (BNB Chain, chainId 56).
+Expected CREATE2 address — deployment pending, verify on BscScan.
 Agent ID registry: 0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F</p>
 
 <script>
-// TODO: fill in after mainnet deployment.
-const CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000";
+// Expected CREATE2 address (deterministic): deployed via the canonical
+// CREATE2 factory 0x4e59b44847b379578588920cA78FbF26c0B4956C with salt
+// keccak256("agentquest-badge-v1").
+// PENDING DEPLOYMENT — this address has no code until the factory
+// transaction is broadcast. Verify on BscScan before announcing the
+// frontend as live.
+const CONTRACT_ADDRESS = "0x00c5579F105fE340eE197E9aF103E06b33fFEa3a";
 const REGISTRY_ADDRESS = "0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F";
 const BSC_CHAIN_ID = 56n;
 
