@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentQuest — Free Badge &amp; Daily Quest for Agent ID Holders</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 1.6rem; }
+  .card { border: 1px solid #ddd; border-radius: 12px; padding: 1rem; margin: 1rem 0; }
+  button { padding: .6rem 1rem; border-radius: 8px; border: 0; background: #111; color: #fff; cursor: pointer; }
+  button:disabled { background: #aaa; cursor: not-allowed; }
+  textarea { width: 100%; box-sizing: border-box; border-radius: 8px; border: 1px solid #ccc; padding: .5rem; }
+  .muted { color: #666; font-size: .9rem; }
+  .quest { border-bottom: 1px solid #eee; padding: .5rem 0; }
+  .quest .who { font-weight: 600; }
+  .quest .when { color: #888; font-size: .8rem; }
+  #status { min-height: 1.2em; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+</head>
+<body>
+<h1>🏅 AgentQuest</h1>
+<p>Free quest board for Agent ID holders. Claim one free badge, complete one
+free daily quest. No fees, no payments, no promised returns — the badge is a
+souvenir.</p>
+
+<div class="card">
+  <h2>How it works</h2>
+  <ol class="muted">
+    <li>Connect your wallet on BNB Chain (chainId 56).</li>
+    <li>The contract checks on-chain that your wallet holds an Agent ID.</li>
+    <li>Claim one free badge (1 per wallet, forever).</li>
+    <li>Complete one free quest per day — a short note about what you or your agent built.</li>
+  </ol>
+  <p class="muted">The contract never holds funds and has no payable functions. The owner's only power is updating the badge artwork URI.</p>
+</div>
+
+<div class="card">
+  <button id="connectBtn">Connect wallet</button>
+  <p id="status" class="muted">Not connected.</p>
+  <p id="agentIdStatus" class="muted"></p>
+</div>
+
+<div class="card">
+  <h2>Your badge</h2>
+  <p id="badgeStatus" class="muted">Connect your wallet to check.</p>
+  <button id="claimBtn" disabled>Claim free badge</button>
+</div>
+
+<div class="card">
+  <h2>Today's quest</h2>
+  <p class="muted">One quest per day. Write a short note (1–280 characters)
+  about what you or your agent built today.</p>
+  <textarea id="note" rows="3" maxlength="280" placeholder="e.g. shipped my first agent skill"></textarea>
+  <p class="muted"><span id="charCount">0</span>/280</p>
+  <button id="questBtn" disabled>Complete today's quest</button>
+</div>
+
+<div class="card">
+  <h2>Quest board</h2>
+  <div id="board"><p class="muted">Loading…</p></div>
+  <p><button id="refreshBtn">Refresh board</button></p>
+</div>
+
+<p class="muted">Contract: <a id="contractLink" href="https://bscscan.com/address/0x00c5579F105fE340eE197E9aF103E06b33fFEa3a" target="_blank" rel="noopener"><span id="contractAddr"></span></a> (BNB Chain, chainId 56). Deployed 19 Nov 2026. Source verified on <a href="https://sourcify.dev/#/lookup/0x00c5579F105fE340eE197E9aF103E06b33fFEa3a" target="_blank" rel="noopener">Sourcify</a> (exact match). Agent ID registry: 0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F</p>
+<p class="muted" id="stats"></p>
+
+<script>
+// Deployed 19 Nov 2026 via the canonical CREATE2 factory
+// 0x4e59b44847b379578588920cA78FbF26c0B4956C with salt
+// keccak256("agentquest-badge-v1"). Tx:
+// 0x031adfd5ab069f790e2ba2f1a87dd83707eee2027adb0dff6f364ecf864dd568
+const CONTRACT_ADDRESS = "0x00c5579F105fE340eE197E9aF103E06b33fFEa3a";
+const REGISTRY_ADDRESS = "0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F";
+const BSC_CHAIN_ID = 56n;
+
+const BADGE_ABI = [
+  "function claim()",
+  "function completeQuest(string note)",
+  "function hasAgentId(address) view returns (bool)",
+  "function hasClaimed(address) view returns (bool)",
+  "function canCompleteQuestToday(address) view returns (bool)",
+  "function balanceOf(address) view returns (uint256)",
+  "function totalClaimed() view returns (uint256)",
+  "function totalQuests() view returns (uint256)",
+  "function getQuest(uint256) view returns (tuple(address author, string note, uint256 timestamp, uint256 day))",
+  "function questCountOf(address) view returns (uint256)"
+];
+const REGISTRY_ABI = ["function balanceOf(address) view returns (uint256)"];
+
+let provider, signer, badge, account;
+
+const $ = id => document.getElementById(id);
+const short = a => a.slice(0, 6) + "…" + a.slice(-4);
+
+$("contractAddr").textContent = CONTRACT_ADDRESS;
+$("note").addEventListener("input", e => { $("charCount").textContent = e.target.value.length; });
+
+async function ensureBsc() {
+  const net = await provider.getNetwork();
+  if (net.chainId !== BSC_CHAIN_ID) {
+    await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x38" }] });
+  }
+}
+
+async function refresh() {
+  if (!account) return;
+  const hasId = await badge.hasAgentId(account);
+  $("agentIdStatus").textContent = hasId
+    ? "✅ This wallet holds an Agent ID."
+    : "❌ This wallet does not hold an Agent ID. Only Agent ID holders can claim and quest.";
+  const claimed = await badge.hasClaimed(account);
+  const bal = await badge.balanceOf(account);
+  $("badgeStatus").textContent = claimed
+    ? `You claimed your badge. Badge balance: ${bal}.`
+    : "You have not claimed your badge yet.";
+  $("claimBtn").disabled = !hasId || claimed;
+  const canQuest = await badge.canCompleteQuestToday(account);
+  $("questBtn").disabled = !hasId || !canQuest;
+  if (hasId && !canQuest) $("questBtn").textContent = "Today's quest already done — come back tomorrow";
+  await loadBoard();
+}
+
+async function loadBoard() {
+  const total = Number(await badge.totalQuests());
+  const claimed = Number(await badge.totalClaimed());
+  $("stats").textContent = `Badges claimed: ${claimed} · Quests completed: ${total}`;
+  const board = $("board");
+  if (total === 0) { board.innerHTML = "<p class='muted'>No quests yet. Be the first!</p>"; return; }
+  const start = Math.max(0, total - 20);
+  let html = "";
+  for (let i = total - 1; i >= start; i--) {
+    const q = await badge.getQuest(i);
+    const when = new Date(Number(q.timestamp) * 1000).toLocaleString();
+    html += `<div class="quest"><div class="who">${short(q.author)}</div>`
+      + `<div>${escapeHtml(q.note)}</div><div class="when">${when}</div></div>`;
+  }
+  board.innerHTML = html;
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+$("connectBtn").addEventListener("click", async () => {
+  try {
+    if (!window.ethereum) { $("status").textContent = "No wallet found. Install a Web3 wallet."; return; }
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    await ensureBsc();
+    signer = await provider.getSigner();
+    account = await signer.getAddress();
+    badge = new ethers.Contract(CONTRACT_ADDRESS, BADGE_ABI, signer);
+    $("status").textContent = `Connected: ${short(account)}`;
+    $("connectBtn").disabled = true;
+    await refresh();
+  } catch (e) { $("status").textContent = "Connection failed: " + (e.reason || e.message); }
+});
+
+$("claimBtn").addEventListener("click", async () => {
+  try {
+    $("status").textContent = "Claiming — confirm in your wallet…";
+    const tx = await badge.claim();
+    $("status").textContent = "Waiting for confirmation… " + tx.hash;
+    await tx.wait();
+    $("status").textContent = "🎉 Badge claimed!";
+    await refresh();
+  } catch (e) { $("status").textContent = "Claim failed: " + (e.reason || e.message); }
+});
+
+$("questBtn").addEventListener("click", async () => {
+  const note = $("note").value.trim();
+  if (!note) { $("status").textContent = "Write a note first (1–280 characters)."; return; }
+  try {
+    $("status").textContent = "Posting quest — confirm in your wallet…";
+    const tx = await badge.completeQuest(note);
+    $("status").textContent = "Waiting for confirmation… " + tx.hash;
+    await tx.wait();
+    $("status").textContent = "✅ Quest completed!";
+    $("note").value = ""; $("charCount").textContent = "0";
+    await refresh();
+  } catch (e) { $("status").textContent = "Quest failed: " + (e.reason || e.message); }
+});
+
+$("refreshBtn").addEventListener("click", async () => {
+  if (!badge) {
+    // Read-only board before connecting: use a public BSC RPC.
+    const ro = new ethers.JsonRpcProvider("https://bsc-dataseed.binance.org/");
+    badge = new ethers.Contract(CONTRACT_ADDRESS, BADGE_ABI, ro);
+  }
+  await loadBoard();
+});
+
+// Load the board read-only on page open.
+$("refreshBtn").click();
+</script>
+</body>
+</html>

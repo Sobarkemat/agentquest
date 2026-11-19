@@ -26,6 +26,17 @@ free daily quest. No fees, no payments, no promised returns — the badge is a
 souvenir.</p>
 
 <div class="card">
+  <h2>How it works</h2>
+  <ol class="muted">
+    <li>Connect your wallet on BNB Chain (chainId 56).</li>
+    <li>The contract checks on-chain that your wallet holds an Agent ID.</li>
+    <li>Claim one free badge (1 per wallet, forever).</li>
+    <li>Complete one free quest per day — a short note about what you or your agent built.</li>
+  </ol>
+  <p class="muted">The contract never holds funds and has no payable functions. The owner's only power is updating the badge artwork URI.</p>
+</div>
+
+<div class="card">
   <button id="connectBtn">Connect wallet</button>
   <p id="status" class="muted">Not connected.</p>
   <p id="agentIdStatus" class="muted"></p>
@@ -52,17 +63,14 @@ souvenir.</p>
   <p><button id="refreshBtn">Refresh board</button></p>
 </div>
 
-<p class="muted">Contract: <span id="contractAddr"></span> (BNB Chain, chainId 56).
-Expected CREATE2 address — deployment pending, verify on BscScan.
-Agent ID registry: 0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F</p>
+<p class="muted">Contract: <a id="contractLink" href="https://bscscan.com/address/0x00c5579F105fE340eE197E9aF103E06b33fFEa3a" target="_blank" rel="noopener"><span id="contractAddr"></span></a> (BNB Chain, chainId 56). Deployed 19 Nov 2026. Source verified on <a href="https://sourcify.dev/#/lookup/0x00c5579F105fE340eE197E9aF103E06b33fFEa3a" target="_blank" rel="noopener">Sourcify</a> (exact match). Agent ID registry: 0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F</p>
+<p class="muted" id="stats"></p>
 
 <script>
-// Expected CREATE2 address (deterministic): deployed via the canonical
-// CREATE2 factory 0x4e59b44847b379578588920cA78FbF26c0B4956C with salt
-// keccak256("agentquest-badge-v1").
-// PENDING DEPLOYMENT — this address has no code until the factory
-// transaction is broadcast. Verify on BscScan before announcing the
-// frontend as live.
+// Deployed 19 Nov 2026 via the canonical CREATE2 factory
+// 0x4e59b44847b379578588920cA78FbF26c0B4956C with salt
+// keccak256("agentquest-badge-v1"). Tx:
+// 0x031adfd5ab069f790e2ba2f1a87dd83707eee2027adb0dff6f364ecf864dd568
 const CONTRACT_ADDRESS = "0x00c5579F105fE340eE197E9aF103E06b33fFEa3a";
 const REGISTRY_ADDRESS = "0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F";
 const BSC_CHAIN_ID = 56n;
@@ -116,6 +124,8 @@ async function refresh() {
 
 async function loadBoard() {
   const total = Number(await badge.totalQuests());
+  const claimed = Number(await badge.totalClaimed());
+  $("stats").textContent = `Badges claimed: ${claimed} · Quests completed: ${total}`;
   const board = $("board");
   if (total === 0) { board.innerHTML = "<p class='muted'>No quests yet. Be the first!</p>"; return; }
   const start = Math.max(0, total - 20);

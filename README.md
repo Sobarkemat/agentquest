@@ -110,6 +110,12 @@ After the preview is approved in the Binance app and the transaction is
 broadcast, verify the deployed contract on BscScan at the expected address
 above, then update the frontend note (deployment no longer pending).
 
+**DEPLOYED 19 Nov 2026 ~16:12 WIB** — tx
+`0x031adfd5ab069f790e2ba2f1a87dd83707eee2027adb0dff6f364ecf864dd568`
+(block 134477117, gas 1,749,203, fee 0.000243 BNB). Contract live at
+`0x00c5579F105fE340eE197E9aF103E06b33fFEa3a`; owner/name/symbol/registry/
+hasAgentId all verified on-chain.
+
 For testnet/local reproduction, `script/Deploy.s.sol` works with forge
 (direct deploy, not via the factory):
 
@@ -130,21 +136,23 @@ Compiler settings (also in `artifacts/compiler-settings.json`):
 - License: MIT
 
 Verification options:
-1. **Standard JSON input** (recommended): `forge build` writes the standard
-   JSON input to `out/build-info/`. Upload that file on BscScan's "Verify
-   via Standard JSON Input" page, with constructor args from
-   `artifacts/constructor-args.txt` (paste WITHOUT the leading `0x`).
+1. **Standard JSON input** (recommended): `artifacts/standard-json-input.json`
+   (built from the artifact metadata; verified locally with solc 0.8.24 to
+   reproduce the deployed creation bytecode byte-for-byte). Upload that file
+   on BscScan's "Verify via Standard JSON Input" page, with constructor args
+   from `artifacts/constructor-args.txt` (paste WITHOUT the leading `0x`).
 2. **CLI** (needs a free BscScan API key):
    `forge verify-contract --chain-id 56 --constructor-args $(cat artifacts/constructor-args.txt) <deployed-address> src/AgentQuestBadge.sol:AgentQuestBadge --etherscan-api-key $BSCSCAN_API_KEY`
+3. **Sourcify** (no key needed — DONE 19 Nov 2026, exact match):
+   `forge verify-contract --chain-id 56 --verifier sourcify --constructor-args $(cat artifacts/constructor-args.txt) 0x00c5579F105fE340eE197E9aF103E06b33fFEa3a src/AgentQuestBadge.sol:AgentQuestBadge`
 
 ## Frontend
 
 `frontend/index.html` — static single-file app (ethers.js v6 via CDN).
 Connect wallet → check Agent ID → claim badge → post daily quest → board.
-`CONTRACT_ADDRESS` is set to the expected CREATE2 address
-`0x00c5579F105fE340eE197E9aF103E06b33fFEa3a` with a "deployment pending"
-note — remove the note after the factory transaction is confirmed on
-BscScan.
+`CONTRACT_ADDRESS` is the deployed contract
+`0x00c5579F105fE340eE197E9aF103E06b33fFEa3a`. Hosted via GitHub Pages from
+`docs/` (same file): https://sobarkemat.github.io/agentquest/
 
 ## Decisions still needed from Ahmad
 
